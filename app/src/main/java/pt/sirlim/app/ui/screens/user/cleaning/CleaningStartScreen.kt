@@ -1,5 +1,6 @@
 package pt.sirlim.app.ui.screens.user.cleaning
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,6 +16,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -32,7 +35,7 @@ fun CleaningStartScreen(
     qrKey: String? = null,
     compId: String? = null,
     indicationId: String? = null,
-    onStart: (String, String?) -> Unit, // compId, indId
+    onStart: (String, String?) -> Unit, 
     onBack: () -> Unit
 ) {
     val viewModel: CleaningViewModel = viewModel()
@@ -55,7 +58,7 @@ fun CleaningStartScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Inicio de Limpeza", color = Color.White) },
+                title = { Text("Inicio de Limpeza", color = Color.White, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Voltar", tint = Color.White)
@@ -81,19 +84,19 @@ fun CleaningStartScreen(
                         .fillMaxSize()
                         .padding(24.dp)
                 ) {
-                    // ALERTA DE INDICAÇÃO DIÁRIA (Se detetada via QR Scan)
                     if (existingIndication != null && indicationId == null) {
                         Card(
                             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.Yellow.copy(alpha = 0.9f))
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF176).copy(alpha = 0.9f)),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
                             Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Warning, null, tint = SirlimDarkBlue)
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(
-                                    text = "Este compartimento já tem uma indicação diária atribuída a si para hoje. A limpeza será associada a essa indicação.",
+                                    text = "Tem uma indicação diária atribuída para este compartimento hoje.",
                                     color = SirlimDarkBlue,
-                                    fontSize = 12.sp,
+                                    fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -102,38 +105,35 @@ fun CleaningStartScreen(
 
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.1f))
+                        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.08f)),
+                        shape = RoundedCornerShape(20.dp),
+                        border = androidx.compose.foundation.BorderStroke(0.5.dp, Color.White.copy(alpha = 0.1f))
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
+                        Column(modifier = Modifier.padding(20.dp)) {
+                            if (!groupName.isNullOrBlank()) {
+                                Text(text = groupName!!.uppercase(), color = SirlimTeal, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                            }
                             Text(text = compartment!!.name, fontSize = 24.sp, fontWeight = FontWeight.Black, color = Color.White)
-                            Text(text = groupName ?: "", color = SirlimTeal, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                             
                             Spacer(modifier = Modifier.height(12.dp))
                             
                             compartment!!.description?.let {
                                 if (it.isNotBlank()) {
-                                    Text(text = it, color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
+                                    Text(text = it, color = Color.White.copy(alpha = 0.7f), fontSize = 13.sp)
                                     Spacer(modifier = Modifier.height(16.dp))
                                 }
                             }
 
                             lastCleaning?.let { info ->
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(Color.White.copy(alpha = 0.15f))
-                                        .padding(12.dp)
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = Color.White.copy(alpha = 0.05f),
+                                    shape = RoundedCornerShape(8.dp)
                                 ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
                                         Icon(Icons.Default.Info, null, tint = SirlimTeal, modifier = Modifier.size(16.dp))
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            text = info,
-                                            color = Color.White,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Medium
-                                        )
+                                        Text(text = info, color = Color.White.copy(alpha = 0.8f), fontSize = 11.sp)
                                     }
                                 }
                             }
@@ -143,10 +143,11 @@ fun CleaningStartScreen(
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Text(
-                        text = if (indicationId != null || existingIndication != null) "Tarefas da Indicação:" else "Tarefas Padrão:",
-                        color = Color.White, 
+                        text = if (indicationId != null || existingIndication != null) "TAREFAS DA INDICAÇÃO:" else "TAREFAS PADRÃO:",
+                        color = SirlimTeal, 
                         fontWeight = FontWeight.Bold, 
-                        fontSize = 16.sp
+                        fontSize = 12.sp,
+                        letterSpacing = 1.sp
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     
@@ -154,26 +155,62 @@ fun CleaningStartScreen(
                         items(tasks) { task ->
                             Card(
                                 modifier = Modifier.padding(vertical = 4.dp).fillMaxWidth(),
-                                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.05f))
+                                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.04f)),
+                                shape = RoundedCornerShape(10.dp)
                             ) {
-                                Text(text = "• ${task.name}", modifier = Modifier.padding(12.dp), color = Color.White)
+                                Text(text = "• ${task.name}", modifier = Modifier.padding(12.dp), color = Color.White, fontSize = 14.sp)
                             }
                         }
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
 
+                    // Botão INICIAR Premium com Glow
+                    val infiniteTransition = rememberInfiniteTransition(label = "btnGlow")
+                    val alpha by infiniteTransition.animateFloat(
+                        initialValue = 0.6f,
+                        targetValue = 1f,
+                        animationSpec = infiniteRepeatable(tween(1500, easing = LinearEasing), RepeatMode.Reverse),
+                        label = "alpha"
+                    )
+
                     Button(
                         onClick = { onStart(compartment!!.id!!, indicationId ?: existingIndication?.id) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(64.dp),
+                            .height(64.dp)
+                            .shadow(12.dp * alpha, RoundedCornerShape(16.dp), spotColor = SirlimTeal),
                         colors = ButtonDefaults.buttonColors(containerColor = SirlimTeal),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
                     ) {
-                        Icon(Icons.Default.PlayArrow, null, tint = SirlimBlue)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("INICIAR", fontSize = 20.sp, fontWeight = FontWeight.Black, color = SirlimBlue)
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            // Moving inner glow
+                            val glowOffset by infiniteTransition.animateFloat(
+                                initialValue = -50f,
+                                targetValue = 50f,
+                                animationSpec = infiniteRepeatable(tween(2000, easing = LinearEasing), RepeatMode.Reverse),
+                                label = "glowOffset"
+                            )
+                            
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        Brush.radialGradient(
+                                            colors = listOf(Color.White.copy(alpha = 0.3f), Color.Transparent),
+                                            center = Offset(100f + glowOffset, 50f),
+                                            radius = 300f
+                                        )
+                                    )
+                            )
+                            
+                            Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                                Icon(Icons.Default.PlayArrow, null, tint = SirlimBlue, modifier = Modifier.size(28.dp))
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text("INICIAR LIMPEZA", fontSize = 18.sp, fontWeight = FontWeight.Black, color = SirlimBlue)
+                            }
+                        }
                     }
                 }
             }

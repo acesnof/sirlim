@@ -2,6 +2,7 @@ package pt.sirlim.app.ui.screens.user
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -14,9 +15,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -67,6 +71,7 @@ fun UserHomeScreen(
         ) {
             Spacer(modifier = Modifier.height(24.dp))
             
+            // Botão LEITURA - Estilo Premium Sólido (Restaurado)
             UserMainActionCard(
                 title = "Leitura",
                 subtitle = "Ler QR Code de Compartimento",
@@ -76,6 +81,7 @@ fun UserHomeScreen(
             
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Escolha Manual Compartimento
             UserSecondaryActionCard(
                 title = "Escolha Manual Compartimento",
                 icon = Icons.Default.List,
@@ -92,7 +98,7 @@ fun UserHomeScreen(
                     onClick = { onNavigate("user_consultations") }
                 )
                 
-                // Botão de Indicações com Glow e Contador
+                // Botão INDICAÇÕES - Com Glow Dinâmico que percorre o botão inteiro
                 UserActionCard(
                     title = "Indicações",
                     icon = Icons.Default.Assignment,
@@ -112,7 +118,8 @@ fun UserMainActionCard(title: String, subtitle: String, icon: ImageVector, onCli
         modifier = Modifier
             .fillMaxWidth()
             .height(160.dp)
-            .clickable { onClick() },
+            .clickable { onClick() }
+            .shadow(12.dp, RoundedCornerShape(24.dp), spotColor = SirlimTeal.copy(alpha = 0.5f)),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = SirlimTeal),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
@@ -138,8 +145,8 @@ fun UserSecondaryActionCard(title: String, icon: ImageVector, onClick: () -> Uni
             .height(80.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.2f)),
-        border = androidx.compose.foundation.BorderStroke(1.dp, SirlimTeal.copy(alpha = 0.5f))
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.12f)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
     ) {
         Row(
             modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
@@ -163,61 +170,96 @@ fun UserActionCard(
     onClick: () -> Unit
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "glow")
+    
+    // Animação de posição que percorre o botão inteiro horizontalmente
+    val xOffsetPos by infiniteTransition.animateFloat(
+        initialValue = -0.5f,
+        targetValue = 1.5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2500, easing = LinearOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "xOffsetPos"
+    )
+
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,
-        targetValue = 0.8f,
+        targetValue = 0.7f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = LinearEasing),
+            animation = tween(1500, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "glowAlpha"
     )
 
     Box(modifier = modifier) {
-        if (hasGlow) {
-            // Glow effect
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .shadow(elevation = 12.dp * glowAlpha, shape = RoundedCornerShape(20.dp), ambientColor = SirlimTeal, spotColor = SirlimTeal)
-                    .background(SirlimTeal.copy(alpha = 0.1f * glowAlpha), RoundedCornerShape(20.dp))
-            )
-        }
-
-        Card(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(110.dp)
-                .clickable { onClick() },
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = if (hasGlow) Color.White.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.15f)
-            ),
-            border = if (hasGlow) androidx.compose.foundation.BorderStroke(1.dp, SirlimTeal.copy(alpha = glowAlpha)) else null
+                .shadow(
+                    if (hasGlow) 12.dp else 0.dp, 
+                    RoundedCornerShape(20.dp), 
+                    spotColor = SirlimTeal.copy(alpha = 0.5f)
+                )
+                .clip(RoundedCornerShape(20.dp))
+                .background(Color.White.copy(alpha = 0.12f))
+                .then(
+                    if (hasGlow) Modifier.drawBehind {
+                        // GLOW QUE ANDA DENTRO DO BOTÃO COMPLETO
+                        drawRect(
+                            brush = Brush.radialGradient(
+                                colors = listOf(SirlimTeal.copy(alpha = glowAlpha), Color.Transparent),
+                                center = Offset(size.width * xOffsetPos, size.height / 2),
+                                radius = size.width * 1.2f
+                            )
+                        )
+                    } else Modifier
+                )
+                .border(
+                    if (hasGlow) 1.5.dp else 1.dp, 
+                    if (hasGlow) SirlimTeal.copy(alpha = glowAlpha + 0.2f) else Color.White.copy(alpha = 0.15f), 
+                    RoundedCornerShape(20.dp)
+                )
+                .clickable { onClick() }
         ) {
             Column(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Icon(icon, null, tint = if (hasGlow) Color.White else SirlimTeal, modifier = Modifier.size(32.dp))
+                Icon(
+                    icon, 
+                    null, 
+                    tint = if (hasGlow) Color.White else SirlimTeal, 
+                    modifier = Modifier.size(32.dp).then(
+                        if (hasGlow) Modifier.graphicsLayer(scaleX = 1.1f, scaleY = 1.1f) else Modifier
+                    )
+                )
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(
+                    title, 
+                    color = Color.White, 
+                    fontWeight = if (hasGlow) FontWeight.Black else FontWeight.Bold, 
+                    fontSize = 16.sp
+                )
             }
         }
 
         if (badgeCount != null) {
             Surface(
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(8.dp)
-                    .size(24.dp),
+                    .align(Alignment.TopEnd)
+                    .offset(x = 6.dp, y = (-6).dp)
+                    .size(28.dp)
+                    .shadow(8.dp, CircleShape),
                 shape = CircleShape,
                 color = Color.Red,
-                contentColor = Color.White
+                contentColor = Color.White,
+                border = androidx.compose.foundation.BorderStroke(2.dp, Color.White)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text(badgeCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(badgeCount.toString(), fontSize = 13.sp, fontWeight = FontWeight.Black)
                 }
             }
         }

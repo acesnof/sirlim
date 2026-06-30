@@ -35,7 +35,7 @@ import java.time.LocalDate
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IndicationFormScreen(
-    indication: Indication? = null,
+    indicationId: String? = null,
     initialDate: LocalDate? = null,
     onBack: () -> Unit
 ) {
@@ -44,12 +44,20 @@ fun IndicationFormScreen(
     val groupsViewModel: GroupsCompartmentsViewModel = viewModel()
     val loginViewModel: LoginViewModel = viewModel()
 
-    val groups by groupsViewModel.groups.collectAsState()
+    val indications by viewModel.indications.collectAsState()
     val compartments by groupsViewModel.compartments.collectAsState()
+    val groups by groupsViewModel.groups.collectAsState()
     val users by loginViewModel.users.collectAsState()
     val allTasks by groupsViewModel.tasks.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMsg by viewModel.error.collectAsState()
+
+    // Encontrar a indicação baseada no ID
+    val indication = remember(indicationId, indications) {
+        indications.find { it.id == indicationId }
+    }
+
+    val isReadOnly = indication?.isCompleted == true
 
     var selectedGroupId by remember(indication) { 
         mutableStateOf(indication?.let { ind -> compartments.find { it.id == ind.compartmentId }?.groupId }) 
@@ -66,10 +74,29 @@ fun IndicationFormScreen(
     var expandedComp by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(indication) {
-        indication?.id?.let { id ->
-            selectedUserIds = viewModel.getIndicationUsers(id).toSet()
-            selectedTaskIds = viewModel.getIndicationTasks(id).toSet()
+    LaunchedEffect(indicationId) {
+        if (indicationId != null) {
+            viewModel.fetchIndications() // Garante que a lista está carregada
+            val ids = viewModel.getIndicationUsers(indicationId)
+            selectedUserIds = ids.toSet()
+            val tIds = viewModel.getIndicationTasks(indicationId)
+            selectedTaskIds = tIds.toSet()
+        } else {
+            viewModel.fetchIndications()
+        }
+    }
+
+    // Obter tarefas do compartimento em tempo real
+    val compartmentTasks = remember { mutableStateListOf<String>() }
+    LaunchedEffect(selectedCompId) {
+        if (selectedCompId.isNotBlank()) {
+            val ids = groupsViewModel.getCompartmentTasks(selectedCompId)
+            compartmentTasks.clear()
+            compartmentTasks.addAll(ids)
+            // Se for nova indicação, auto-selecionar as tarefas do compartimento
+            if (indication == null) {
+                selectedTaskIds = ids.toSet()
+            }
         }
     }
 
@@ -77,7 +104,7 @@ fun IndicationFormScreen(
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             title = { Text("Apagar Indicação") },
-            text = { Text("Deseja apagar esta indicação? A limpeza associada também poderá ser afetada.") },
+            text = { Text("Deseja apagar esta indicação permanentemente?") },
             confirmButton = {
                 TextButton(onClick = {
                     indication?.id?.let { id ->
@@ -97,7 +124,13 @@ fun IndicationFormScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (indication == null) "Nova Indicação" else "Editar Indicação", color = Color.White, fontWeight = FontWeight.Bold) },
+                title = { 
+                    Text(
+                        if (isReadOnly) "Visualizar Indicação" else if (indication == null) "Nova Indicação" else "Editar Indicação", 
+                        color = Color.White, 
+                        fontWeight = FontWeight.Bold
+                    ) 
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Voltar", tint = Color.White)
@@ -114,34 +147,34 @@ fun IndicationFormScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    if (selectedCompId.isNotBlank() && selectedUserIds.isNotEmpty()) {
-                        val newInd = Indication(
-                            id = indication?.id,
-                            compartmentId = selectedCompId,
-                            urgency = urgency,
-                            instructions = instructions,
-                            scheduledDate = scheduledDate,
-                            isCompleted = indication?.isCompleted ?: false
-                        )
-                        viewModel.saveIndication(newInd, selectedUserIds.toList(), selectedTaskIds.toList()) { success ->
-                            if (success) {
-                                Toast.makeText(context, "Indicação guardada com sucesso!", Toast.LENGTH_LONG).show()
-                                onBack()
-                            } else {
-                                Toast.makeText(context, "Erro ao gravar. Tente novamente.", Toast.LENGTH_LONG).show()
+            if (!isReadOnly) {
+                FloatingActionButton(
+                    onClick = {
+                        if (selectedCompId.isNotBlank() && selectedUserIds.isNotEmpty()) {
+                            val newInd = Indication(
+                                id = indication?.id,
+                                compartmentId = selectedCompId,
+                                urgency = urgency,
+                                instructions = instructions,
+                                scheduledDate = scheduledDate,
+                                isCompleted = indication?.isCompleted ?: false
+                            )
+                            viewModel.saveIndication(newInd, selectedUserIds.toList(), selectedTaskIds.toList()) { success ->
+                                if (success) {
+                                    Toast.makeText(context, "Indicação guardada com sucesso!", Toast.LENGTH_LONG).show()
+                                    onBack()
+                                }
                             }
+                        } else {
+                            Toast.makeText(context, "Selecione o compartimento e pelo menos um funcionário.", Toast.LENGTH_SHORT).show()
                         }
-                    } else {
-                        Toast.makeText(context, "Selecione o compartimento e pelo menos um funcionário.", Toast.LENGTH_SHORT).show()
-                    }
-                },
-                containerColor = SirlimTeal,
-                contentColor = SirlimBlue
-            ) {
-                if (isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = SirlimBlue)
-                else Icon(Icons.Default.Save, "Guardar")
+                    },
+                    containerColor = SirlimTeal,
+                    contentColor = SirlimBlue
+                ) {
+                    if (isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp), color = SirlimBlue)
+                    else Icon(Icons.Default.Save, "Guardar")
+                }
             }
         }
     ) { padding ->
@@ -153,11 +186,27 @@ fun IndicationFormScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(20.dp)
         ) {
-            // GRUPO (FILTRAR ATIVOS OU MANTER O ATUAL SE EDITANDO)
+            if (isReadOnly) {
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9).copy(alpha = 0.2f))
+                ) {
+                    Text(
+                        "ESTA INDICAÇÃO JÁ FOI CONCLUÍDA E ESTÁ EM MODO DE LEITURA.",
+                        modifier = Modifier.padding(12.dp),
+                        color = Color(0xFFA5D6A7),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+            }
+
+            // 1. GRUPO
             Text("1. Selecione o Grupo", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             ExposedDropdownMenuBox(
-                expanded = expandedGroup,
-                onExpandedChange = { expandedGroup = it },
+                expanded = expandedGroup && !isReadOnly,
+                onExpandedChange = { if (!isReadOnly) expandedGroup = it },
                 modifier = Modifier.padding(vertical = 8.dp)
             ) {
                 val groupName = groups.find { it.id == selectedGroupId }?.name ?: "Sem Grupo / Ver Todos"
@@ -165,9 +214,15 @@ fun IndicationFormScreen(
                     value = groupName,
                     onValueChange = {},
                     readOnly = true,
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedGroup) },
+                    enabled = !isReadOnly,
+                    trailingIcon = { if (!isReadOnly) ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedGroup) },
                     modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedBorderColor = SirlimTeal)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White, 
+                        unfocusedTextColor = Color.White, 
+                        disabledTextColor = Color.White.copy(alpha = 0.6f),
+                        focusedBorderColor = SirlimTeal
+                    )
                 )
                 ExposedDropdownMenu(expanded = expandedGroup, onDismissRequest = { expandedGroup = false }) {
                     DropdownMenuItem(text = { Text("Sem Grupo / Ver Todos") }, onClick = { selectedGroupId = null; expandedGroup = false })
@@ -177,7 +232,7 @@ fun IndicationFormScreen(
                 }
             }
 
-            // COMPARTIMENTO (FILTRAR ATIVOS)
+            // 2. COMPARTIMENTO
             val filteredComps = if (selectedGroupId == null) {
                 compartments.filter { it.isActive || it.id == selectedCompId }
             } else {
@@ -186,8 +241,8 @@ fun IndicationFormScreen(
             
             Text("2. Selecione o Compartimento", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             ExposedDropdownMenuBox(
-                expanded = expandedComp,
-                onExpandedChange = { expandedComp = it },
+                expanded = expandedComp && !isReadOnly,
+                onExpandedChange = { if (!isReadOnly) expandedComp = it },
                 modifier = Modifier.padding(vertical = 8.dp)
             ) {
                 val compName = filteredComps.find { it.id == selectedCompId }?.name ?: "Selecionar..."
@@ -195,20 +250,33 @@ fun IndicationFormScreen(
                     value = compName,
                     onValueChange = {},
                     readOnly = true,
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedComp) },
+                    enabled = !isReadOnly,
+                    trailingIcon = { if (!isReadOnly) ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedComp) },
                     modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedBorderColor = SirlimTeal)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White, 
+                        unfocusedTextColor = Color.White, 
+                        disabledTextColor = Color.White.copy(alpha = 0.6f),
+                        focusedBorderColor = SirlimTeal
+                    )
                 )
                 ExposedDropdownMenu(expanded = expandedComp, onDismissRequest = { expandedComp = false }) {
                     filteredComps.forEach { c ->
-                        DropdownMenuItem(text = { Text(c.name) }, onClick = { selectedCompId = c.id!!; expandedComp = false })
+                        DropdownMenuItem(
+                            text = { Text(c.name) }, 
+                            onClick = { 
+                                selectedCompId = c.id!!
+                                selectedGroupId = c.groupId
+                                expandedComp = false 
+                            }
+                        )
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // URGENCIA
+            // 3. URGENCIA
             Text("3. Urgência", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Urgency.entries.forEach { u ->
@@ -219,12 +287,13 @@ fun IndicationFormScreen(
                     }
                     FilterChip(
                         selected = urgency == u,
-                        onClick = { urgency = u },
+                        onClick = { if (!isReadOnly) urgency = u },
+                        enabled = !isReadOnly || urgency == u,
                         label = { Text(u.name, fontSize = 12.sp) },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = color,
                             selectedLabelColor = Color.White,
-                            labelColor = Color.White.copy(alpha = 0.7f)
+                            disabledSelectedContainerColor = color.copy(alpha = 0.5f)
                         )
                     )
                 }
@@ -232,22 +301,32 @@ fun IndicationFormScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // FUNCIONÁRIOS (SÓ UTILIZADORES ATIVOS)
-            Text("4. Atribuir a Funcionários (Utilizadores)", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            // 4. FUNCIONÁRIOS
+            Text("4. Funcionários Atribuídos", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             Card(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.1f))
             ) {
                 Column(modifier = Modifier.padding(8.dp)) {
-                    users.filter { it.role == UserRole.USER && (it.isActive || selectedUserIds.contains(it.id)) }.forEach { user ->
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable {
+                    val usersToShow = if (isReadOnly) {
+                        users.filter { selectedUserIds.contains(it.id) }
+                    } else {
+                        users.filter { it.role == UserRole.USER && (it.isActive || selectedUserIds.contains(it.id)) }
+                    }
+                    
+                    usersToShow.forEach { user ->
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable(enabled = !isReadOnly) {
                             selectedUserIds = if (selectedUserIds.contains(user.id)) selectedUserIds - user.id!! else selectedUserIds + user.id!!
                         }.padding(4.dp)) {
-                            Checkbox(checked = selectedUserIds.contains(user.id), onCheckedChange = null, colors = CheckboxDefaults.colors(checkedColor = SirlimTeal))
+                            Checkbox(
+                                checked = selectedUserIds.contains(user.id), 
+                                onCheckedChange = null, 
+                                enabled = !isReadOnly,
+                                colors = CheckboxDefaults.colors(checkedColor = SirlimTeal)
+                            )
                             Spacer(modifier = Modifier.width(8.dp))
-                            // NOVO: Mostrar Username e Nome Completo
                             val displayName = if (user.fullName.isNullOrBlank()) user.username else "${user.username} (${user.fullName})"
-                            Text(displayName, color = Color.White)
+                            Text(displayName, color = Color.White, fontSize = 14.sp)
                         }
                     }
                 }
@@ -255,22 +334,35 @@ fun IndicationFormScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // TAREFAS (FILTRAR ATIVAS)
+            // 5. TAREFAS
             Text("5. Selecione as Tarefas", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             Card(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.1f))
             ) {
                 Column(modifier = Modifier.padding(8.dp)) {
-                    allTasks.filter { it.isActive || selectedTaskIds.contains(it.id) }.forEach { task ->
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable {
-                            selectedTaskIds = if (selectedTaskIds.contains(task.id)) selectedTaskIds - task.id!! else selectedTaskIds + task.id!!
-                        }.padding(4.dp)) {
-                            Checkbox(checked = selectedTaskIds.contains(task.id), onCheckedChange = null, colors = CheckboxDefaults.colors(checkedColor = SirlimTeal))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Column {
-                                Text(task.name, color = Color.White, fontSize = 14.sp)
-                                task.description?.let { Text(it, color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp) }
+                    val tasksToDisplay = allTasks.filter { compartmentTasks.contains(it.id) || selectedTaskIds.contains(it.id) }
+                    
+                    if (selectedCompId.isBlank()) {
+                        Text("Escolha um compartimento primeiro.", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(8.dp))
+                    } else if (tasksToDisplay.isEmpty()) {
+                        Text("Este compartimento não tem tarefas obrigatórias associadas.", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(8.dp))
+                    } else {
+                        tasksToDisplay.forEach { task ->
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable(enabled = !isReadOnly) {
+                                selectedTaskIds = if (selectedTaskIds.contains(task.id)) selectedTaskIds - task.id!! else selectedTaskIds + task.id!!
+                            }.padding(4.dp)) {
+                                Checkbox(
+                                    checked = selectedTaskIds.contains(task.id), 
+                                    onCheckedChange = null, 
+                                    enabled = !isReadOnly,
+                                    colors = CheckboxDefaults.colors(checkedColor = SirlimTeal)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text(task.name, color = Color.White, fontSize = 14.sp)
+                                    task.description?.let { Text(it, color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp) }
+                                }
                             }
                         }
                     }
@@ -281,10 +373,16 @@ fun IndicationFormScreen(
 
             OutlinedTextField(
                 value = instructions,
-                onValueChange = { instructions = it },
-                label = { Text("Instruções Adicionais (Opcional)", color = Color.White.copy(alpha = 0.6f)) },
+                onValueChange = { if (!isReadOnly) instructions = it },
+                label = { Text("Instruções Adicionais", color = Color.White.copy(alpha = 0.6f)) },
                 modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedBorderColor = SirlimTeal)
+                readOnly = isReadOnly,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.White, 
+                    unfocusedTextColor = Color.White, 
+                    disabledTextColor = Color.White.copy(alpha = 0.6f),
+                    focusedBorderColor = SirlimTeal
+                )
             )
 
             if (errorMsg != null) {

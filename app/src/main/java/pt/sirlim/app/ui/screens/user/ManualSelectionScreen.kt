@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,6 +36,8 @@ fun ManualSelectionScreen(
     val compartments by viewModel.compartments.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
+    var searchQuery by remember { mutableStateOf("") }
+
     LaunchedEffect(Unit) {
         viewModel.fetchData()
     }
@@ -52,63 +55,90 @@ fun ManualSelectionScreen(
             )
         }
     ) { padding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .background(Brush.verticalGradient(listOf(SirlimBlue, SirlimDarkBlue)))
         ) {
-            if (isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = SirlimTeal)
-            } else {
-                // FILTRAR APENAS ATIVOS
-                val activeCompartments = compartments.filter { it.isActive }
-                
-                if (activeCompartments.isEmpty()) {
-                    Text(
-                        "Nenhum compartimento ativo encontrado.",
-                        color = Color.White,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        val grouped = activeCompartments.groupBy { comp ->
-                            groups.find { it.id == comp.groupId }?.name ?: "Sem Grupo"
-                        }
+            // Search Bar
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                placeholder = { Text("Pesquisar Grupo ou Compartimento...", color = Color.White.copy(alpha = 0.5f), fontSize = 14.sp) },
+                leadingIcon = { Icon(Icons.Default.Search, null, tint = SirlimTeal) },
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedBorderColor = SirlimTeal,
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                    focusedContainerColor = Color.White.copy(alpha = 0.05f),
+                    unfocusedContainerColor = Color.White.copy(alpha = 0.05f)
+                ),
+                singleLine = true
+            )
 
-                        grouped.forEach { (groupName, compList) ->
-                            item {
-                                Text(
-                                    text = groupName,
-                                    color = SirlimTeal,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
-                                )
+            Box(modifier = Modifier.fillMaxSize()) {
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = SirlimTeal)
+                } else {
+                    val filteredCompartments = compartments.filter { comp ->
+                        comp.isActive && (
+                            comp.name.contains(searchQuery, ignoreCase = true) ||
+                            groups.find { it.id == comp.groupId }?.name?.contains(searchQuery, ignoreCase = true) == true
+                        )
+                    }
+                    
+                    if (filteredCompartments.isEmpty()) {
+                        Text(
+                            "Nenhum compartimento encontrado.",
+                            color = Color.White.copy(alpha = 0.6f),
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            val grouped = filteredCompartments.groupBy { comp ->
+                                groups.find { it.id == comp.groupId }?.name ?: "Sem Grupo"
                             }
-                            items(compList) { comp ->
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { onCompartmentSelected(comp.qrCodeKey) },
-                                    colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f)),
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(16.dp),
-                                        verticalAlignment = Alignment.CenterVertically
+
+                            grouped.forEach { (groupName, compList) ->
+                                item {
+                                    Text(
+                                        text = groupName,
+                                        color = SirlimTeal,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                                    )
+                                }
+                                items(compList) { comp ->
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { onCompartmentSelected(comp.qrCodeKey) },
+                                        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f)),
+                                        shape = RoundedCornerShape(12.dp)
                                     ) {
-                                        Text(
-                                            text = comp.name,
-                                            fontWeight = FontWeight.Bold,
-                                            color = SirlimDarkBlue,
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                        Text("Selecionar >", color = SirlimTeal, fontSize = 12.sp)
+                                        Row(
+                                            modifier = Modifier.padding(16.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = comp.name,
+                                                fontWeight = FontWeight.Bold,
+                                                color = SirlimDarkBlue,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            Text("Selecionar >", color = SirlimTeal, fontSize = 12.sp)
+                                        }
                                     }
                                 }
                             }

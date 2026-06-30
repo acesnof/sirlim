@@ -7,13 +7,8 @@ import io.github.jan.supabase.postgrest.query.filter.FilterOperator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import pt.sirlim.app.data.model.Cleaning
-import pt.sirlim.app.data.model.Compartment
-import pt.sirlim.app.data.model.Task
+import pt.sirlim.app.data.model.*
 import pt.sirlim.app.data.remote.SupabaseManager
-import java.time.LocalDate
-import java.time.OffsetDateTime
-import java.time.format.DateTimeFormatter
 
 class ConsultationsViewModel : ViewModel() {
     private val _cleanings = MutableStateFlow<List<Cleaning>>(emptyList())
@@ -21,6 +16,9 @@ class ConsultationsViewModel : ViewModel() {
 
     private val _compartments = MutableStateFlow<Map<String, Compartment>>(emptyMap())
     val compartments: StateFlow<Map<String, Compartment>> = _compartments
+
+    private val _groups = MutableStateFlow<Map<String, Group>>(emptyMap())
+    val groups: StateFlow<Map<String, Group>> = _groups
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
@@ -32,9 +30,11 @@ class ConsultationsViewModel : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // 1. Fetch compartments to have names ready
-                val compList = SupabaseManager.client.postgrest["compartments"]
-                    .select().decodeList<Compartment>()
+                // 1. Fetch groups and compartments
+                val grpList = SupabaseManager.client.postgrest["groups"].select().decodeList<Group>()
+                _groups.value = grpList.associateBy { it.id ?: "" }
+
+                val compList = SupabaseManager.client.postgrest["compartments"].select().decodeList<Compartment>()
                 _compartments.value = compList.associateBy { it.id ?: "" }
 
                 // 2. Fetch cleanings for this user
@@ -58,7 +58,8 @@ class ConsultationsViewModel : ViewModel() {
                 .select {
                     filter { filter("cleaning_id", FilterOperator.EQ, cleaningId) }
                 }
-            val taskIds = response.decodeList<CleaningPerformedTask>().map { it.taskId }
+            val list = response.decodeList<pt.sirlim.app.ui.screens.user.consultations.CleaningPerformedTask>()
+            val taskIds = list.map { it.taskId }
             
             if (taskIds.isNotEmpty()) {
                 SupabaseManager.client.postgrest["tasks"]

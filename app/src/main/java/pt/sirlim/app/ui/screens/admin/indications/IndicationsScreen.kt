@@ -1,5 +1,7 @@
 package pt.sirlim.app.ui.screens.admin.indications
 
+import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -11,8 +13,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,9 +58,34 @@ fun IndicationsScreen(
 
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
+    var isCalendarVisible by remember { mutableStateOf(true) }
+    
+    var searchTxt by remember { mutableStateOf("") }
+    var selectedGroupId by remember { mutableStateOf<String?>(null) }
+    var showGroupFilter by remember { mutableStateOf(false) }
+    
+    var showDeleteConfirm by remember { mutableStateOf<Indication?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.fetchIndications()
+        groupsViewModel.fetchData()
+        loginViewModel.fetchUsers()
+    }
+
+    if (showDeleteConfirm != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = null },
+            title = { Text("Apagar Indicação") },
+            text = { Text("Deseja apagar esta indicação permanentemente?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteIndication(showDeleteConfirm!!.id!!) { 
+                        showDeleteConfirm = null
+                    }
+                }) { Text("APAGAR", color = Color.Red) }
+            },
+            dismissButton = { TextButton(onClick = { showDeleteConfirm = null }) { Text("CANCELAR") } }
+        )
     }
 
     Scaffold(
@@ -88,29 +116,107 @@ fun IndicationsScreen(
                 .padding(padding)
                 .background(Brush.verticalGradient(listOf(SirlimBlue, SirlimDarkBlue)))
         ) {
-            CalendarHeader(
-                currentMonth = currentMonth,
-                onMonthChange = { currentMonth = it }
-            )
+            AnimatedVisibility(visible = isCalendarVisible, enter = expandVertically(), exit = shrinkVertically()) {
+                Column {
+                    CalendarHeader(currentMonth = currentMonth, onMonthChange = { currentMonth = it })
+                    IndicationCalendarGrid(currentMonth = currentMonth, selectedDate = selectedDate, indications = indications, onDateSelected = { selectedDate = it })
+                }
+            }
 
-            IndicationCalendarGrid(
-                currentMonth = currentMonth,
-                selectedDate = selectedDate,
-                indications = indications,
-                onDateSelected = { selectedDate = it }
-            )
+            Surface(
+                color = Color.White.copy(alpha = 0.08f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Indicações em ${selectedDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))}",
+                            color = Color.White,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 17.sp
+                        )
+                        IconButton(onClick = { isCalendarVisible = !isCalendarVisible }) {
+                            Icon(
+                                if (isCalendarVisible) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = "Toggle Calendário",
+                                tint = SirlimTeal
+                            )
+                        }
+                    }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                    if (!isCalendarVisible) {
+                        Row(
+                            modifier = Modifier.padding(top = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Box(modifier = Modifier.weight(1.2f)) {
+                                OutlinedButton(
+                                    onClick = { showGroupFilter = true },
+                                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                                    border = BorderStroke(1.dp, SirlimTeal.copy(alpha = 0.5f)),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    val name = groups.find { it.id == selectedGroupId }?.name ?: "Todos os Grupos"
+                                    Text(name, fontSize = 11.sp, maxLines = 1, textAlign = TextAlign.Start, modifier = Modifier.weight(1f))
+                                    Icon(Icons.Default.ArrowDropDown, null, modifier = Modifier.size(18.dp), tint = SirlimTeal)
+                                }
+                                DropdownMenu(
+                                    expanded = showGroupFilter, 
+                                    onDismissRequest = { showGroupFilter = false },
+                                    modifier = Modifier.background(SirlimDarkBlue).border(1.dp, SirlimTeal.copy(alpha = 0.3f))
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Todos os Grupos", color = Color.White) }, 
+                                        onClick = { selectedGroupId = null; showGroupFilter = false }
+                                    )
+                                    groups.sortedBy { it.name }.forEach { grp ->
+                                        DropdownMenuItem(
+                                            text = { Text(grp.name, color = Color.White) }, 
+                                            onClick = { selectedGroupId = grp.id; showGroupFilter = false }
+                                        )
+                                    }
+                                }
+                            }
 
-            Text(
-                text = "Indicações para ${selectedDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))}",
-                color = Color.White,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                fontWeight = FontWeight.Bold
-            )
+                            OutlinedTextField(
+                                value = searchTxt,
+                                onValueChange = { searchTxt = it },
+                                placeholder = { Text("Pesquisar...", color = Color.White.copy(alpha = 0.4f), fontSize = 12.sp) },
+                                modifier = Modifier.weight(1f).height(48.dp),
+                                singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White,
+                                    focusedBorderColor = SirlimTeal,
+                                    unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                                    focusedContainerColor = Color.White.copy(alpha = 0.05f),
+                                    unfocusedContainerColor = Color.White.copy(alpha = 0.05f)
+                                ),
+                                shape = RoundedCornerShape(10.dp),
+                                textStyle = LocalTextStyle.current.copy(fontSize = 12.sp),
+                                trailingIcon = { Icon(Icons.Default.Search, null, tint = SirlimTeal.copy(alpha = 0.5f), modifier = Modifier.size(18.dp)) }
+                            )
+                        }
+                    }
+                }
+            }
 
-            val dayIndications = indications.filter { 
-                it.scheduledDate == selectedDate.toString() 
+            val dayIndications = indications.filter { ind ->
+                val dateMatch = ind.scheduledDate == selectedDate.toString()
+                if (!dateMatch) return@filter false
+                
+                if (!isCalendarVisible) {
+                    val comp = compartments.find { it.id == ind.compartmentId }
+                    val groupMatch = selectedGroupId == null || comp?.groupId == selectedGroupId
+                    val searchMatch = searchTxt.isBlank() || comp?.name?.contains(searchTxt, ignoreCase = true) == true
+                    groupMatch && searchMatch
+                } else true
             }
 
             if (isLoading) {
@@ -119,7 +225,7 @@ fun IndicationsScreen(
                 }
             } else if (dayIndications.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Nenhuma indicação para este dia.", color = Color.White.copy(alpha = 0.6f))
+                    Text("Nenhuma indicação.", color = Color.White.copy(alpha = 0.6f))
                 }
             } else {
                 LazyColumn(
@@ -135,14 +241,16 @@ fun IndicationsScreen(
                         LaunchedEffect(indication.id) {
                             val ids = viewModel.getIndicationUsers(indication.id!!)
                             assignedUsers.clear()
-                            assignedUsers.addAll(users.filter { ids.contains(it.id) }.map { it.username })
+                            val names = users.filter { ids.contains(it.id) }.map { it.fullName ?: it.username }
+                            assignedUsers.addAll(names)
                         }
 
                         IndicationItemPremium(
                             indication = indication,
-                            compName = comp?.name ?: "Desconhecido",
+                            compName = comp?.name ?: "Compartimento",
                             groupName = group?.name ?: "Sem Grupo",
                             users = assignedUsers.joinToString(", "),
+                            onDelete = { showDeleteConfirm = indication },
                             onClick = { onEditIndication(indication) }
                         )
                     }
@@ -161,9 +269,9 @@ fun IndicationCalendarGrid(
 ) {
     val daysInMonth = currentMonth.lengthOfMonth()
     val offset = currentMonth.atDay(1).dayOfWeek.value - 1
-    val borderColor = SirlimTeal.copy(alpha = 0.2f)
+    val borderColor = SirlimTeal.copy(alpha = 0.1f)
 
-    Column(modifier = Modifier.padding(horizontal = 8.dp)) {
+    Column(modifier = Modifier.padding(horizontal = 12.dp)) {
         Row(modifier = Modifier.fillMaxWidth()) {
             val days = listOf("S", "T", "Q", "Q", "S", "S", "D")
             days.forEach { day ->
@@ -171,8 +279,9 @@ fun IndicationCalendarGrid(
                     text = day,
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center,
-                    color = Color.White.copy(alpha = 0.5f),
-                    fontSize = 12.sp
+                    color = Color.White.copy(alpha = 0.4f),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
@@ -198,16 +307,16 @@ fun IndicationCalendarGrid(
                             val isSelected = date == selectedDate
                             val dayIndications = indications.filter { it.scheduledDate == date.toString() }
                             
-                            val hasPending = dayIndications.any { !it.isCompleted }
+                            val hasPending = dayIndications.isNotEmpty() && dayIndications.any { !it.isCompleted }
                             val hasCompleted = dayIndications.isNotEmpty() && dayIndications.all { it.isCompleted }
 
                             Box(
                                 modifier = Modifier
                                     .size(34.dp)
-                                    .clip(CircleShape)
+                                    .then(if (isSelected) Modifier.border(1.5.dp, SirlimTeal, RoundedCornerShape(8.dp)) else Modifier)
+                                    .clip(RoundedCornerShape(8.dp))
                                     .background(
                                         when {
-                                            isSelected -> SirlimTeal
                                             hasPending -> Color(0xFFEF9A9A).copy(alpha = 0.6f)
                                             hasCompleted -> Color(0xFFA5D6A7).copy(alpha = 0.6f)
                                             else -> Color.Transparent
@@ -218,8 +327,9 @@ fun IndicationCalendarGrid(
                             ) {
                                 Text(
                                     text = dayNum.toString(),
-                                    color = if (isSelected) SirlimDarkBlue else Color.White,
-                                    fontWeight = if (dayIndications.isNotEmpty() || isSelected) FontWeight.Bold else FontWeight.Normal
+                                    color = Color.White,
+                                    fontWeight = if (dayIndications.isNotEmpty() || isSelected) FontWeight.ExtraBold else FontWeight.Normal,
+                                    fontSize = 13.sp
                                 )
                             }
                         }
@@ -236,36 +346,45 @@ fun IndicationItemPremium(
     compName: String,
     groupName: String,
     users: String,
+    onDelete: () -> Unit,
     onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.95f)
+            containerColor = if (indication.isCompleted) Color(0xFFE8F5E9).copy(alpha = 0.95f) else Color.White.copy(alpha = 0.95f)
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             val urgencyColor = when(indication.urgency) {
                 Urgency.ALTA -> Color(0xFFFF5252)
                 Urgency.MEDIA -> Color(0xFFFFC107)
                 Urgency.BAIXA -> Color(0xFF4CAF50)
             }
             
-            Box(modifier = Modifier.size(4.dp, 40.dp).background(urgencyColor, CircleShape))
+            Box(modifier = Modifier.size(4.dp, 45.dp).background(urgencyColor, CircleShape))
             
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(14.dp))
             
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = compName, fontWeight = FontWeight.ExtraBold, color = SirlimDarkBlue, fontSize = 16.sp)
-                Text(text = groupName, color = SirlimBlue, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                Text(text = groupName.uppercase(), color = SirlimBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(text = "Para: $users", color = Color.Gray, fontSize = 12.sp)
+                Text(text = "FUNCIONÁRIOS: $users", color = Color.DarkGray, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                
                 if (indication.isCompleted) {
-                    Text(text = "✓ CONCLUÍDA", color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(text = "✓ CONCLUÍDA", color = Color(0xFF2E7D32), fontWeight = FontWeight.Black, fontSize = 11.sp)
                 }
             }
+            
+            IconButton(onClick = { onDelete() }, modifier = Modifier.size(32.dp).clip(CircleShape).background(Color.Red.copy(alpha = 0.05f))) {
+                Icon(Icons.Default.Delete, null, tint = Color.Red.copy(alpha = 0.6f), modifier = Modifier.size(18.dp))
+            }
+            
+            Spacer(modifier = Modifier.width(4.dp))
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = SirlimTeal)
         }
     }

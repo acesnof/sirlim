@@ -202,6 +202,10 @@ class CleaningViewModel : ViewModel() {
         startTimer()
     }
 
+    fun resumeTimer() {
+        startTimer()
+    }
+
     private fun startTimer() {
         timerJob?.cancel()
         timerJob = viewModelScope.launch {

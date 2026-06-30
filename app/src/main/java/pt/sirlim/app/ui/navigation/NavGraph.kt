@@ -19,6 +19,8 @@ import pt.sirlim.app.ui.screens.admin.application.accounts.AccountFormScreen
 import pt.sirlim.app.ui.screens.admin.groups_compartments.GroupsCompartmentsScreen
 import pt.sirlim.app.ui.screens.admin.groups_compartments.CompartmentFormScreen
 import pt.sirlim.app.ui.screens.admin.tasks.TasksScreen
+import pt.sirlim.app.ui.screens.admin.consultations.AdminConsultationsScreen
+import pt.sirlim.app.ui.screens.admin.reports.ReportsScreen
 import pt.sirlim.app.ui.screens.admin.indications.IndicationsScreen
 import pt.sirlim.app.ui.screens.admin.indications.IndicationFormScreen
 import pt.sirlim.app.ui.screens.admin.indications.IndicationsViewModel
@@ -153,6 +155,14 @@ fun NavGraph(navController: NavHostController) {
             TasksScreen(onBack = { navController.popBackStack() })
         }
 
+        composable("admin_consultations") {
+            AdminConsultationsScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable("admin_reports") {
+            ReportsScreen(onBack = { navController.popBackStack() })
+        }
+
         composable("admin_indications") {
             IndicationsScreen(
                 onAddIndication = { date -> navController.navigate("admin_indication_form?date=$date") },
@@ -170,12 +180,9 @@ fun NavGraph(navController: NavHostController) {
         ) { backStackEntry ->
             val indId = backStackEntry.arguments?.getString("indId")
             val dateStr = backStackEntry.arguments?.getString("date")
-            val viewModel: IndicationsViewModel = viewModel()
-            val indications by viewModel.indications.collectAsState()
-            val indication = indications.find { it.id == indId }
             
             IndicationFormScreen(
-                indication = indication,
+                indicationId = indId,
                 initialDate = dateStr?.let { LocalDate.parse(it) },
                 onBack = { navController.popBackStack() }
             )

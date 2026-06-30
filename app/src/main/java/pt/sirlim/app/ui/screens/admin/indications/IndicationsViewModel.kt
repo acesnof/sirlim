@@ -28,13 +28,14 @@ class IndicationsViewModel : ViewModel() {
                     .select().decodeList<Indication>()
                 _indications.value = result
             } catch (e: Exception) {
-                _error.value = "Erro ao carregar indicações: ${e.message}"
+                _error.value = "Erro ao carregar: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
         }
     }
 
+    // FUNÇÃO RESTAURADA PARA O UTILIZADOR
     fun fetchUserIndications(userId: String) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -71,10 +72,9 @@ class IndicationsViewModel : ViewModel() {
             _isLoading.value = true
             _error.value = null
             try {
-                // Lógica de Gravação para múltiplos utilizadores ou único
-                val userList = if (indication.id == null) selectedUserIds else listOf(selectedUserIds.first())
-                
-                userList.forEach { userId ->
+                val usersToProcess = if (indication.id == null) selectedUserIds else listOf(selectedUserIds.first())
+
+                usersToProcess.forEach { userId ->
                     val indId = if (indication.id == null) {
                         val res = SupabaseManager.client.postgrest["indications"].insert(indication) {
                             select()
@@ -87,32 +87,24 @@ class IndicationsViewModel : ViewModel() {
                         indication.id
                     }
 
-                    // Associar Utilizador
-                    SupabaseManager.client.postgrest["indication_users"].delete {
-                        filter { filter("indication_id", FilterOperator.EQ, indId) }
-                    }
-                    SupabaseManager.client.postgrest["indication_users"].insert(
-                        mapOf("indication_id" to indId, "user_id" to userId)
-                    )
+                    SupabaseManager.client.postgrest["indication_users"].delete { filter { filter("indication_id", FilterOperator.EQ, indId) } }
+                    SupabaseManager.client.postgrest["indication_users"].insert(mapOf("indication_id" to indId, "user_id" to userId))
 
-                    // Associar Tarefas (Indication Tasks)
                     try {
-                        SupabaseManager.client.postgrest["indication_tasks"].delete {
-                            filter { filter("indication_id", FilterOperator.EQ, indId) }
-                        }
+                        SupabaseManager.client.postgrest["indication_tasks"].delete { filter { filter("indication_id", FilterOperator.EQ, indId) } }
                         if (selectedTaskIds.isNotEmpty()) {
                             val taskAssoc = selectedTaskIds.map { mapOf("indication_id" to indId, "task_id" to it) }
                             SupabaseManager.client.postgrest["indication_tasks"].insert(taskAssoc)
                         }
                     } catch (e: Exception) {
-                        // Ignorar se tabela não existir ainda, mas avisar se possível
+                        println("Erro (não fatal) nas tarefas: ${e.message}")
                     }
                 }
 
                 fetchIndications()
                 onResult(true)
             } catch (e: Exception) {
-                _error.value = "Erro técnico: ${e.message}"
+                _error.value = "Erro Supabase: ${e.message}"
                 onResult(false)
             } finally {
                 _isLoading.value = false
