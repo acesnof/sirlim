@@ -250,7 +250,9 @@ fun IndicationsScreen(
                             compName = comp?.name ?: "Compartimento",
                             groupName = group?.name ?: "Sem Grupo",
                             users = assignedUsers.joinToString(", "),
-                            onDelete = { showDeleteConfirm = indication },
+                            onDelete = { 
+                                showDeleteConfirm = indication 
+                            },
                             onClick = { onEditIndication(indication) }
                         )
                     }
@@ -380,8 +382,16 @@ fun IndicationItemPremium(
                 }
             }
             
-            IconButton(onClick = { onDelete() }, modifier = Modifier.size(32.dp).clip(CircleShape).background(Color.Red.copy(alpha = 0.05f))) {
-                Icon(Icons.Default.Delete, null, tint = Color.Red.copy(alpha = 0.6f), modifier = Modifier.size(18.dp))
+            IconButton(
+                onClick = { onDelete() }, 
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    Icons.Default.Delete, 
+                    null, 
+                    tint = Color.Red.copy(alpha = 0.6f), 
+                    modifier = Modifier.size(20.dp)
+                )
             }
             
             Spacer(modifier = Modifier.width(4.dp))

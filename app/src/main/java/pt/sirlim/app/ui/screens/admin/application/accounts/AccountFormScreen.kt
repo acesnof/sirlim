@@ -91,6 +91,7 @@ fun AccountFormScreen(
     }
 
     Scaffold(
+        modifier = Modifier.imePadding(),
         topBar = {
             TopAppBar(
                 title = { Text(if (user == null) "Nova Conta" else "Editar Conta", color = Color.White) },

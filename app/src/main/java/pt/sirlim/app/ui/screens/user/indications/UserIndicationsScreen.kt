@@ -98,6 +98,17 @@ fun UserIndicationsScreen(
             )
 
             val dayIndications = indications.filter { it.scheduledDate == selectedDate.toString() }
+            val sortedDayIndications = dayIndications.sortedWith(compareBy(
+                { ind -> 
+                    val comp = compartments.find { it.id == ind.compartmentId }
+                    val group = groups.find { it.id == comp?.groupId }
+                    group?.name ?: "ZZZ"
+                },
+                { ind ->
+                    val comp = compartments.find { it.id == ind.compartmentId }
+                    comp?.name ?: ""
+                }
+            ))
 
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -117,7 +128,7 @@ fun UserIndicationsScreen(
                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(dayIndications) { indication ->
+                    items(sortedDayIndications) { indication ->
                         val comp = compartments.find { it.id == indication.compartmentId }
                         val group = groups.find { it.id == comp?.groupId }
                         val tasks = remember { mutableStateListOf<Task>() }

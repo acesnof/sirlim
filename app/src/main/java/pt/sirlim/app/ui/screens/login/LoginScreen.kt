@@ -79,8 +79,10 @@ fun LoginScreen(
             label = "LoginContent"
         ) { user ->
             if (user == null) {
+                // FILTRAR UTILIZADORES ATIVOS PARA O LOGIN
+                val activeUsers = users.filter { it.isActive }
                 UserSelectionList(
-                    users = users,
+                    users = activeUsers,
                     isLoading = isLoading,
                     error = error,
                     onRetry = { viewModel.fetchUsers() },

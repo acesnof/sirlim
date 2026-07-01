@@ -35,6 +35,7 @@ fun CleaningStartScreen(
     qrKey: String? = null,
     compId: String? = null,
     indicationId: String? = null,
+    weeklyInstructions: String? = null,
     onStart: (String, String?) -> Unit, 
     onBack: () -> Unit
 ) {
@@ -141,6 +142,31 @@ fun CleaningStartScreen(
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
+
+                    if (existingIndication?.instructions?.isNotBlank() == true || weeklyInstructions?.isNotBlank() == true) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                            colors = CardDefaults.cardColors(containerColor = SirlimTeal.copy(alpha = 0.1f)),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, SirlimTeal.copy(alpha = 0.3f))
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    text = "INSTRUÇÕES ADICIONAIS:",
+                                    color = SirlimTeal,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 1.sp
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = (existingIndication?.instructions ?: weeklyInstructions)!!,
+                                    color = Color.White,
+                                    fontSize = 14.sp,
+                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                )
+                            }
+                        }
+                    }
 
                     Text(
                         text = if (indicationId != null || existingIndication != null) "TAREFAS DA INDICAÇÃO:" else "TAREFAS PADRÃO:",

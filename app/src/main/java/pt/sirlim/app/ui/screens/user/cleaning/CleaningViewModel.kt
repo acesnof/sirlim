@@ -143,7 +143,35 @@ class CleaningViewModel : ViewModel() {
             _groupName.value = "Sem Grupo"
         }
         fetchLastCleaning(comp.id!!)
-        fetchTasks(comp.id)
+        
+        // Se houver indicação, carregar as tarefas da indicação. Caso contrário, as do compartimento.
+        if (_existingIndication.value != null) {
+            fetchIndicationTasks(_existingIndication.value!!.id!!)
+        } else {
+            fetchTasks(comp.id)
+        }
+    }
+
+    private suspend fun fetchIndicationTasks(indicationId: String) {
+        try {
+            val tasksIdsResponse = SupabaseManager.client.postgrest["indication_tasks"]
+                .select {
+                    filter { filter("indication_id", FilterOperator.EQ, indicationId) }
+                }
+            val taskIds = tasksIdsResponse.decodeList<pt.sirlim.app.ui.screens.admin.indications.IndicationTask>()
+            
+            if (taskIds.isNotEmpty()) {
+                val tasksResult = SupabaseManager.client.postgrest["tasks"]
+                    .select {
+                        filter { filter("id", FilterOperator.IN, taskIds.map { it.taskId }) }
+                    }.decodeList<Task>()
+                _tasks.value = tasksResult
+            } else {
+                _tasks.value = emptyList()
+            }
+        } catch (e: Exception) {
+            _tasks.value = emptyList()
+        }
     }
 
     private suspend fun fetchLastCleaning(compId: String) {

@@ -132,6 +132,7 @@ class IndicationsViewModel : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
             try {
+                // Com o ON DELETE CASCADE/SET NULL no SQL, basta apagar a indicação
                 SupabaseManager.client.postgrest["indications"].delete {
                     filter { filter("id", FilterOperator.EQ, indicationId) }
                 }

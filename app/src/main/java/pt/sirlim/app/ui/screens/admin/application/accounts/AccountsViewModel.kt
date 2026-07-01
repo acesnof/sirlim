@@ -45,9 +45,18 @@ class AccountsViewModel : ViewModel() {
                 if (finalUser.id == null) {
                     SupabaseManager.client.postgrest["users"].insert(finalUser)
                 } else {
-                    SupabaseManager.client.postgrest["users"].update(finalUser) {
+                    // Update explicito para garantir que todos os campos (incluindo is_active) são gravados
+                    SupabaseManager.client.postgrest["users"].update({
+                        User::username setTo finalUser.username
+                        User::pin setTo finalUser.pin
+                        User::fullName setTo finalUser.fullName
+                        User::description setTo finalUser.description
+                        User::role setTo finalUser.role
+                        User::isActive setTo finalUser.isActive
+                        User::photoUrl setTo finalUser.photoUrl
+                    }) {
                         filter {
-                            User::id eq finalUser.id
+                            User::id eq finalUser.id!!
                         }
                     }
                 }

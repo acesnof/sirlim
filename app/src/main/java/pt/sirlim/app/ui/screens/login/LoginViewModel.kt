@@ -33,8 +33,8 @@ class LoginViewModel : ViewModel() {
                     .select()
                     .decodeList<User>()
                 
-                // Ordenação solicitada: ADMIN -> USER -> VIEWER
-                val sortedUsers = result.filter { it.isActive }.sortedWith(compareBy(
+                // Removido o filtro isActive aqui para permitir gestão administrativa
+                val sortedUsers = result.sortedWith(compareBy(
                     { when(it.role) {
                         UserRole.ADMIN -> 0
                         UserRole.USER -> 1

@@ -38,6 +38,7 @@ fun CleaningTimerScreen(
     userId: String,
     compId: String,
     indicationId: String? = null,
+    weeklyInstructions: String? = null,
     onFinish: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -88,148 +89,162 @@ fun CleaningTimerScreen(
             )
         }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(Brush.verticalGradient(listOf(SirlimBlue, SirlimDarkBlue)))
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .background(Brush.verticalGradient(listOf(SirlimBlue, SirlimDarkBlue))),
+            contentAlignment = Alignment.TopCenter // Conteúdo começa em cima
         ) {
-            // Header Cristalino
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.12f)),
-                shape = RoundedCornerShape(20.dp),
-                border = androidx.compose.foundation.BorderStroke(0.5.dp, Color.White.copy(alpha = 0.2f))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(32.dp)
             ) {
-                Column(modifier = Modifier.padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    if (!groupName.isNullOrBlank()) {
+                // Header Cristalino - Centrado ao centro do card
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(140.dp), // Altura fixa para garantir centramento interno
+                    colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.12f)),
+                    shape = RoundedCornerShape(20.dp),
+                    border = androidx.compose.foundation.BorderStroke(0.5.dp, Color.White.copy(alpha = 0.2f))
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(), // Ocupa o card todo
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center // CENTRAMENTO VERTICAL DENTRO DO CARD
+                    ) {
+                        if (!groupName.isNullOrBlank()) {
+                            Text(
+                                text = groupName!!.uppercase(), 
+                                fontSize = 12.sp, 
+                                color = SirlimTeal, 
+                                fontWeight = FontWeight.Bold, 
+                                letterSpacing = 1.5.sp
+                            )
+                        }
                         Text(
-                            text = groupName!!.uppercase(), 
-                            fontSize = 11.sp, 
-                            color = SirlimTeal, 
-                            fontWeight = FontWeight.Bold, 
-                            letterSpacing = 1.2.sp
+                            text = compartment?.name ?: "A carregar...", 
+                            fontSize = 26.sp, 
+                            fontWeight = FontWeight.Black, 
+                            color = Color.White,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
-                    }
-                    Text(text = compartment?.name ?: "A carregar...", fontSize = 24.sp, fontWeight = FontWeight.Black, color = Color.White)
-                    
-                    indicationId?.let {
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Box(
-                            modifier = Modifier
-                                .background(SirlimTeal.copy(alpha = 0.2f), RoundedCornerShape(6.dp))
-                                .padding(horizontal = 10.dp, vertical = 3.dp)
-                        ) {
-                            Text("INDICAÇÃO DIÁRIA", color = SirlimTeal, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                        
+                        indicationId?.let {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .background(SirlimTeal.copy(alpha = 0.2f), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 12.dp, vertical = 4.dp)
+                            ) {
+                                Text("INDICAÇÃO DIÁRIA", color = SirlimTeal, fontSize = 11.sp, fontWeight = FontWeight.Black)
+                            }
                         }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(40.dp))
-
-            // CRONOMETRO PREMIUM REDUZIDO
-            Box(
-                modifier = Modifier
-                    .size(200.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(Color.White.copy(alpha = 0.05f), Color.Transparent)
-                        )
-                    )
-                    .border(2.dp, if (isPaused) Color.Yellow.copy(alpha = 0.4f) else SirlimTeal.copy(alpha = 0.4f), CircleShape)
-                    .shadow(10.dp, CircleShape, spotColor = if (isPaused) Color.Yellow else SirlimTeal),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = if (isPaused) "PAUSADO" else "LIMPANDO",
-                        color = if (isPaused) Color.Yellow else SirlimTeal,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 2.sp
-                    )
-                    Text(
-                        text = formatTimer(seconds),
-                        fontSize = 44.sp,
-                        fontWeight = FontWeight.Light,
-                        color = Color.White
-                    )
-                    if (pauseSeconds > 0) {
+                // CRONOMETRO - Apenas linha de círculo, transparente, borda amarela se pausado
+                Box(
+                    modifier = Modifier
+                        .size(220.dp)
+                        .clip(CircleShape)
+                        .background(Color.Transparent)
+                        .border(
+                            width = 3.dp, 
+                            color = if (isPaused) Color.Yellow else SirlimTeal, 
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        if (isPaused) {
+                            Text(
+                                text = "PAUSADO",
+                                color = Color.Yellow,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 2.sp
+                            )
+                        }
                         Text(
-                            text = "Pausa: ${formatTimer(pauseSeconds)}",
-                            fontSize = 12.sp,
-                            color = Color.White.copy(alpha = 0.5f),
-                            fontWeight = FontWeight.Medium
+                            text = formatTimer(seconds),
+                            fontSize = 52.sp,
+                            fontWeight = FontWeight.Light,
+                            color = Color.White
                         )
+                        if (pauseSeconds > 0) {
+                            Text(
+                                text = "Pausa: ${formatTimer(pauseSeconds)}",
+                                fontSize = 13.sp,
+                                color = Color.White.copy(alpha = 0.5f),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(48.dp))
-
-            // BOTOES PAUSA E TERMINAR PREMIUM
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Botão Pausa
-                Button(
-                    onClick = { viewModel.togglePause() },
-                    modifier = Modifier.weight(1f).height(64.dp),
-                    shape = RoundedCornerShape(18.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isPaused) SirlimTeal else Color.White.copy(alpha = 0.15f)
-                    ),
-                    border = if (!isPaused) androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)) else null
+                // BOTOES PAUSA E TERMINAR PREMIUM
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Icon(
-                        if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause, 
-                        null, 
-                        tint = if (isPaused) SirlimBlue else Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
+                    // Botão Pausa
+                    Button(
+                        onClick = { viewModel.togglePause() },
+                        modifier = Modifier.weight(1f).height(64.dp),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isPaused) Color.Yellow.copy(alpha = 0.9f) else Color.White.copy(alpha = 0.15f)
+                        ),
+                        border = if (!isPaused) androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)) else null
+                    ) {
+                        Icon(
+                            if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause, 
+                            null, 
+                            tint = if (isPaused) SirlimDarkBlue else Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            if (isPaused) "RETOMAR" else "PAUSAR", 
+                            fontWeight = FontWeight.ExtraBold, 
+                            color = if (isPaused) SirlimDarkBlue else Color.White,
+                            fontSize = 14.sp
+                        )
+                    }
+
+                    // Botão Terminar
+                    Button(
+                        onClick = {
+                            viewModel.stopTimer()
+                            showFinishForm = true
+                        },
+                        modifier = Modifier.weight(1f).height(64.dp),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = customRed),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
+                    ) {
+                        Icon(Icons.Default.Stop, null, tint = Color.White, modifier = Modifier.size(24.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text("TERMINAR", fontWeight = FontWeight.Black, color = Color.White, fontSize = 14.sp)
+                    }
+                }
+                
+                Surface(
+                    color = Color.Black.copy(alpha = 0.2f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
                     Text(
-                        if (isPaused) "RETOMAR" else "PAUSAR", 
-                        fontWeight = FontWeight.ExtraBold, 
-                        color = if (isPaused) SirlimBlue else Color.White,
-                        fontSize = 14.sp
+                        text = "Iniciada às: ${startTime?.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")) ?: "--:--"}",
+                        color = Color.White.copy(alpha = 0.6f),
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     )
                 }
-
-                // Botão Terminar
-                Button(
-                    onClick = {
-                        viewModel.stopTimer()
-                        showFinishForm = true
-                    },
-                    modifier = Modifier.weight(1f).height(64.dp),
-                    shape = RoundedCornerShape(18.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = customRed),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
-                ) {
-                    Icon(Icons.Default.Stop, null, tint = Color.White, modifier = Modifier.size(24.dp))
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text("TERMINAR", fontWeight = FontWeight.Black, color = Color.White, fontSize = 14.sp)
-                }
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-            
-            Surface(
-                color = Color.Black.copy(alpha = 0.2f),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text(
-                    text = "Iniciada às: ${startTime?.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")) ?: "--:--"}",
-                    color = Color.White.copy(alpha = 0.6f),
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                )
             }
         }
     }

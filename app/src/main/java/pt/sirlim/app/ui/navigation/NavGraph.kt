@@ -172,6 +172,10 @@ fun NavGraph(navController: NavHostController) {
             )
         }
 
+        composable("admin_scheduling") {
+            pt.sirlim.app.ui.screens.admin.scheduling.WeeklyPlanScreen(onBack = { navController.popBackStack() })
+        }
+
         composable(
             route = "admin_indication_form?indId={indId}&date={date}",
             arguments = listOf(
@@ -247,6 +251,20 @@ fun NavGraph(navController: NavHostController) {
         }
 
         composable(
+            route = "user_weekly/{userId}",
+            arguments = listOf(navArgument("userId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val userId = backStackEntry.arguments?.getString("userId") ?: ""
+            pt.sirlim.app.ui.screens.user.weekly.UserWeeklyPlanScreen(
+                userId = userId,
+                onStartCleaning = { compId, instructions ->
+                    navController.navigate("cleaning_start/$userId?compId=$compId&weeklyInstructions=$instructions")
+                },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
             route = "user_consultations/{userId}",
             arguments = listOf(navArgument("userId") { type = NavType.StringType })
         ) { backStackEntry ->
@@ -267,47 +285,53 @@ fun NavGraph(navController: NavHostController) {
         }
 
         composable(
-            route = "cleaning_start/{userId}?qrKey={qrKey}&compId={compId}&indId={indId}",
+            route = "cleaning_start/{userId}?qrKey={qrKey}&compId={compId}&indId={indId}&weeklyInstructions={weeklyInstructions}",
             arguments = listOf(
                 navArgument("userId") { type = NavType.StringType },
                 navArgument("qrKey") { type = NavType.StringType; nullable = true; defaultValue = null },
                 navArgument("compId") { type = NavType.StringType; nullable = true; defaultValue = null },
-                navArgument("indId") { type = NavType.StringType; nullable = true; defaultValue = null }
+                navArgument("indId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("weeklyInstructions") { type = NavType.StringType; nullable = true; defaultValue = null }
             )
         ) { backStackEntry ->
             val userId = backStackEntry.arguments?.getString("userId") ?: ""
             val qrKey = backStackEntry.arguments?.getString("qrKey")
             val compId = backStackEntry.arguments?.getString("compId")
             val indId = backStackEntry.arguments?.getString("indId")
+            val weeklyInstructions = backStackEntry.arguments?.getString("weeklyInstructions")
             
             CleaningStartScreen(
                 userId = userId,
                 qrKey = qrKey,
                 compId = compId,
                 indicationId = indId,
+                weeklyInstructions = weeklyInstructions,
                 onStart = { actualCompId, actualIndId ->
-                    navController.navigate("cleaning_timer/$userId/$actualCompId?indId=$actualIndId")
+                    navController.navigate("cleaning_timer/$userId/$actualCompId?indId=$actualIndId&weeklyInstructions=$weeklyInstructions")
                 },
                 onBack = { navController.popBackStack() }
             )
         }
 
         composable(
-            route = "cleaning_timer/{userId}/{compId}?indId={indId}",
+            route = "cleaning_timer/{userId}/{compId}?indId={indId}&weeklyInstructions={weeklyInstructions}",
             arguments = listOf(
                 navArgument("userId") { type = NavType.StringType },
                 navArgument("compId") { type = NavType.StringType },
-                navArgument("indId") { type = NavType.StringType; nullable = true; defaultValue = null }
+                navArgument("indId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("weeklyInstructions") { type = NavType.StringType; nullable = true; defaultValue = null }
             )
         ) { backStackEntry ->
             val userId = backStackEntry.arguments?.getString("userId") ?: ""
             val compId = backStackEntry.arguments?.getString("compId") ?: ""
             val indId = backStackEntry.arguments?.getString("indId")
+            val weeklyInstructions = backStackEntry.arguments?.getString("weeklyInstructions")
             
             CleaningTimerScreen(
                 userId = userId,
                 compId = compId,
                 indicationId = indId,
+                weeklyInstructions = weeklyInstructions,
                 onFinish = {
                     navController.navigate("user_home/$userId") {
                         popUpTo("user_home/$userId") { inclusive = true }

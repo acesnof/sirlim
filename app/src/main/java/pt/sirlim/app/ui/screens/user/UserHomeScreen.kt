@@ -1,6 +1,5 @@
 package pt.sirlim.app.ui.screens.user
 
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,14 +17,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import pt.sirlim.app.ui.screens.login.LoginViewModel
 import pt.sirlim.app.data.model.UserRole
 import pt.sirlim.app.ui.screens.admin.indications.IndicationsViewModel
+import pt.sirlim.app.ui.screens.login.LoginViewModel
 import pt.sirlim.app.ui.theme.SirlimBlue
 import pt.sirlim.app.ui.theme.SirlimDarkBlue
 import pt.sirlim.app.ui.theme.SirlimTeal
@@ -49,7 +50,8 @@ fun UserHomeScreen(
         indicationsViewModel.fetchUserIndications(userId)
     }
 
-    val pendingCount = indications.count { !it.isCompleted }
+    val today = java.time.LocalDate.now().toString()
+    val pendingCount = indications.count { !it.isCompleted && it.scheduledDate == today }
     val hasPending = pendingCount > 0
 
     Scaffold(
@@ -65,61 +67,84 @@ fun UserHomeScreen(
             )
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .background(Brush.verticalGradient(listOf(SirlimBlue, SirlimDarkBlue)))
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)
+            .background(Brush.verticalGradient(listOf(SirlimBlue, SirlimDarkBlue)))
         ) {
-            if (isViewer) {
-                Spacer(modifier = Modifier.height(24.dp))
-                // Perfil Leitura: Apenas Consultas (Geral/Admin style)
-                UserActionCard(
-                    title = "Consultas Gerais",
-                    icon = Icons.Default.Search,
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = { onNavigate("viewer_consultations") }
-                )
-            } else {
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                UserActionCard(
-                    title = "Leitura",
-                    icon = Icons.Default.QrCodeScanner,
-                    modifier = Modifier.fillMaxWidth(),
-                    backgroundColor = SirlimTeal,
-                    hasInnerGlow = true,
-                    onClick = { onNavigate("scanner") }
-                )
-                
+            // Icon decorativo em fundo
+            Icon(
+                imageVector = Icons.Default.CleaningServices,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(300.dp)
+                    .align(Alignment.BottomStart)
+                    .offset(x = (-80).dp, y = 80.dp)
+                    .graphicsLayer(alpha = 0.05f),
+                tint = Color.White
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Top // Encostado ao topo
+            ) {
                 Spacer(modifier = Modifier.height(16.dp))
 
-                UserActionCard(
-                    title = "Escolha Manual Compartimento",
-                    icon = Icons.Default.List,
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = { onNavigate("manual_selection") }
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    UserActionCard(
+                if (isViewer) {
+                    UserActionBoxPremium(
+                        title = "Consultas Gerais",
+                        icon = Icons.Default.Search,
+                        onClick = { onNavigate("viewer_consultations") }
+                    )
+                } else {
+                    // 1. LEITURA (VERDE CLARINHO)
+                    UserActionBoxPremium(
+                        title = "Leitura",
+                        subtitle = "Ler QR Code do compartimento",
+                        icon = Icons.Default.QrCodeScanner,
+                        backgroundColor = SirlimTeal.copy(alpha = 0.5f),
+                        onClick = { onNavigate("scanner") }
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // 2. ESCOLHA MANUAL (LARGURA TODA)
+                    UserActionBoxPremium(
+                        title = "Escolha Manual Compartimento",
+                        icon = Icons.Default.List,
+                        onClick = { onNavigate("manual_selection") }
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // 3. SEMANA E INDICAÇÕES (LADO A LADO)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        UserActionBoxPremium(
+                            title = "Semana",
+                            icon = Icons.Default.DateRange,
+                            modifier = Modifier.weight(1f),
+                            onClick = { onNavigate("user_weekly") }
+                        )
+                        UserActionBoxPremium(
+                            title = "Indicações",
+                            icon = Icons.Default.Assignment,
+                            modifier = Modifier.weight(1f),
+                            badgeCount = if (hasPending) pendingCount else null,
+                            onClick = { onNavigate("user_indications") }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // 4. CONSULTAS (APENAS BORDER)
+                    UserActionBoxPremium(
                         title = "Consultas",
                         icon = Icons.Default.Search,
-                        modifier = Modifier.weight(1f),
+                        isOutlined = true,
                         onClick = { onNavigate("user_consultations") }
-                    )
-                    
-                    UserActionCard(
-                        title = "Indicações",
-                        icon = Icons.Default.Assignment,
-                        modifier = Modifier.weight(1f),
-                        hasGlowOnLine = hasPending,
-                        badgeCount = if (hasPending) pendingCount else null,
-                        onClick = { onNavigate("user_indications") }
                     )
                 }
             }
@@ -128,97 +153,85 @@ fun UserHomeScreen(
 }
 
 @Composable
-fun UserActionCard(
-    title: String, 
-    icon: ImageVector, 
-    modifier: Modifier = Modifier, 
+fun UserActionBoxPremium(
+    title: String,
+    subtitle: String? = null,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
     backgroundColor: Color? = null,
-    hasInnerGlow: Boolean = false,
-    hasGlowOnLine: Boolean = false,
+    isOutlined: Boolean = false,
     badgeCount: Int? = null,
     onClick: () -> Unit
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "lineGlow")
-    val lineAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 0.9f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "lineAlpha"
-    )
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(if (subtitle != null) 140.dp else 125.dp)
+            .shadow(10.dp, RoundedCornerShape(20.dp), spotColor = Color.Black.copy(alpha = 0.3f))
+            .clip(RoundedCornerShape(20.dp))
+            .background(if (isOutlined) Color.Transparent else (backgroundColor ?: Color.White.copy(alpha = 0.12f)))
+            .then(
+                if (isOutlined) Modifier.border(2.dp, SirlimTeal, RoundedCornerShape(20.dp))
+                else Modifier.border(0.5.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
+            )
+            .clickable { onClick() }
+    ) {
+        if (!isOutlined) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color.White.copy(alpha = 0.08f), Color.Transparent)
+                        )
+                    )
+            )
+        }
 
-    Box(modifier = modifier) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(110.dp)
-                .shadow(elevation = 6.dp, shape = RoundedCornerShape(20.dp), spotColor = Color.Black.copy(alpha = 0.3f))
-                .clickable { onClick() },
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = backgroundColor ?: Color.White.copy(alpha = 0.15f)
-            ),
-            border = if (hasGlowOnLine) 
-                androidx.compose.foundation.BorderStroke(2.dp, SirlimTeal.copy(alpha = lineAlpha))
-            else 
-                androidx.compose.foundation.BorderStroke(1.dp, SirlimTeal.copy(alpha = 0.3f))
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                // Inner Glow Cristalino (Apenas para Leitura)
-                if (hasInnerGlow) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(2.dp)
-                            .background(
-                                Brush.radialGradient(
-                                    colors = listOf(Color.White.copy(alpha = 0.3f), Color.Transparent),
-                                    radius = 450f
-                                ),
-                                RoundedCornerShape(18.dp)
-                            )
-                    )
-                }
-
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        icon, 
-                        null, 
-                        tint = if (backgroundColor != null) SirlimBlue else SirlimTeal, 
-                        modifier = Modifier.size(32.dp)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        title, 
-                        color = if (backgroundColor != null) SirlimBlue else Color.White, 
-                        fontWeight = FontWeight.Bold, 
-                        fontSize = 16.sp
-                    )
-                }
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = title,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                textAlign = TextAlign.Center
+            )
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
             }
         }
 
-        // Círculo com o número de indicações
         if (badgeCount != null) {
             Surface(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .offset(x = 6.dp, y = (-6).dp)
-                    .size(26.dp)
-                    .shadow(8.dp, CircleShape),
+                    .padding(8.dp)
+                    .size(28.dp),
                 shape = CircleShape,
                 color = Color.Red,
                 contentColor = Color.White,
                 border = androidx.compose.foundation.BorderStroke(2.dp, Color.White)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text(badgeCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Black)
+                    Text(text = badgeCount.toString(), fontSize = 12.sp, fontWeight = FontWeight.Black)
                 }
             }
         }

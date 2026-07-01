@@ -122,6 +122,7 @@ fun IndicationFormScreen(
     }
 
     Scaffold(
+        modifier = Modifier.imePadding(), // FAZ COM QUE O ECRÃ SE AJUSTE AO TECLADO
         topBar = {
             TopAppBar(
                 title = { 

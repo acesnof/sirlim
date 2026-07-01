@@ -1,11 +1,10 @@
 package pt.sirlim.app.ui.screens.admin
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
@@ -14,8 +13,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -48,46 +50,137 @@ fun AdminHomeScreen(
             )
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .background(
-                    Brush.verticalGradient(listOf(SirlimBlue, SirlimDarkBlue))
-                )
-                .padding(16.dp)
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)
+            .background(Brush.verticalGradient(listOf(SirlimBlue, SirlimDarkBlue)))
         ) {
-            Text(
-                text = "Painel de Controlo",
-                color = Color.White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 16.dp)
+            // Icon decorativo em fundo (muito transparente)
+            Icon(
+                imageVector = Icons.Default.AdminPanelSettings,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(300.dp)
+                    .align(Alignment.BottomEnd)
+                    .offset(x = 80.dp, y = 80.dp)
+                    .graphicsLayer(alpha = 0.05f),
+                tint = Color.White
             )
 
-            val menuItems = listOf(
-                AdminMenuItem("Aplicação", Icons.Default.Settings, "admin_application"),
-                AdminMenuItem("Consultas", Icons.Default.Search, "admin_consultations"),
-                AdminMenuItem("Indicações", Icons.Default.Assignment, "admin_indications"),
-                AdminMenuItem("Relatórios", Icons.Default.Assessment, "admin_reports")
-            )
-
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxSize()
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Top // Encostado ao topo
             ) {
-                items(menuItems) { item ->
-                    AdminMenuCard(item) {
-                        onNavigate(item.route)
-                    }
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 1. PRIMEIRA LINHA: APLICAÇÃO E CONSULTAS
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    AdminActionBox(
+                        title = "Aplicação",
+                        icon = Icons.Default.Settings,
+                        modifier = Modifier.weight(1f),
+                        onClick = { onNavigate("admin_application") }
+                    )
+                    AdminActionBox(
+                        title = "Consultas",
+                        icon = Icons.Default.Search,
+                        modifier = Modifier.weight(1f),
+                        onClick = { onNavigate("admin_consultations") }
+                    )
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 2. SEGUNDA LINHA: PROGRAMAÇÃO E INDICAÇÕES
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    AdminActionBox(
+                        title = "Programação",
+                        icon = Icons.Default.DateRange,
+                        modifier = Modifier.weight(1f),
+                        onClick = { onNavigate("admin_scheduling") }
+                    )
+                    AdminActionBox(
+                        title = "Indicações",
+                        icon = Icons.Default.Assignment,
+                        modifier = Modifier.weight(1f),
+                        onClick = { onNavigate("admin_indications") }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 3. TERCEIRA LINHA: RELATÓRIOS (LARGURA TODA, APENAS LINHA)
+                AdminActionBox(
+                    title = "Relatórios",
+                    icon = Icons.Default.Assessment,
+                    isOutlined = true,
+                    onClick = { onNavigate("admin_reports") }
+                )
             }
         }
     }
 }
 
+@Composable
+fun AdminActionBox(
+    title: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    isOutlined: Boolean = false,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(130.dp)
+            .shadow(10.dp, RoundedCornerShape(20.dp), spotColor = Color.Black.copy(alpha = 0.3f))
+            .clip(RoundedCornerShape(20.dp))
+            .background(if (isOutlined) Color.Transparent else Color.White.copy(alpha = 0.12f))
+            .then(
+                if (isOutlined) Modifier.border(2.dp, SirlimTeal, RoundedCornerShape(20.dp))
+                else Modifier.border(0.5.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
+            )
+            .clickable { onClick() }
+    ) {
+        if (!isOutlined) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color.White.copy(alpha = 0.08f), Color.Transparent)
+                        )
+                    )
+            )
+        }
+
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = SirlimTeal,
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = title,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+// Mantendo para compatibilidade com AdminApplicationMenu
 data class AdminMenuItem(
     val title: String,
     val icon: ImageVector,
@@ -96,36 +189,9 @@ data class AdminMenuItem(
 
 @Composable
 fun AdminMenuCard(item: AdminMenuItem, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(140.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.15f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                imageVector = item.icon,
-                contentDescription = null,
-                tint = SirlimTeal,
-                modifier = Modifier.size(48.dp)
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = item.title,
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                textAlign = TextAlign.Center
-            )
-        }
-    }
+    AdminActionBox(
+        title = item.title,
+        icon = item.icon,
+        onClick = onClick
+    )
 }

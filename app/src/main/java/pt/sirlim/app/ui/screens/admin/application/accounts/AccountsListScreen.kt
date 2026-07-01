@@ -10,6 +10,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.FilterListOff
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -41,6 +43,8 @@ fun AccountsListScreen(
     val users by loginViewModel.users.collectAsState()
     val isLoading by loginViewModel.isLoading.collectAsState()
 
+    var showInactive by remember { mutableStateOf(false) }
+
     // Refresh data when entering screen
     LaunchedEffect(Unit) {
         loginViewModel.fetchUsers()
@@ -59,12 +63,30 @@ fun AccountsListScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = onAddUser,
-                containerColor = SirlimTeal,
-                contentColor = SirlimBlue
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.padding(16.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Adicionar")
+                // Botão para mostrar/esconder inativos
+                FloatingActionButton(
+                    onClick = { showInactive = !showInactive },
+                    containerColor = if (showInactive) SirlimTeal else Color.White,
+                    contentColor = SirlimBlue
+                ) {
+                    Icon(
+                        if (showInactive) Icons.Default.FilterListOff else Icons.Default.FilterList,
+                        contentDescription = "Mostrar Inativos"
+                    )
+                }
+
+                FloatingActionButton(
+                    onClick = onAddUser,
+                    containerColor = SirlimTeal,
+                    contentColor = SirlimBlue
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Adicionar")
+                }
             }
         }
     ) { padding ->
@@ -77,12 +99,14 @@ fun AccountsListScreen(
             if (isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = SirlimTeal)
             } else {
+                val filteredUsers = if (showInactive) users else users.filter { it.isActive }
+                
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 80.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(users) { user ->
+                    items(filteredUsers) { user ->
                         AccountItem(user = user, onEdit = { onEditUser(user) })
                     }
                 }
