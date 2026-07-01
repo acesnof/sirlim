@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -121,7 +120,6 @@ fun ReportsScreen(onBack: () -> Unit) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Botão Exportação Geral (JSON)
             OutlinedButton(
                 onClick = {
                     viewModel.generateFullBackup { backup ->
@@ -181,13 +179,20 @@ fun MultiSelectCalendarGrid(
                             Box(
                                 modifier = Modifier
                                     .size(36.dp)
+                                    // NOVO: Design de quadrado com cantos redondos se selecionado
                                     .then(if (isSelected) Modifier.border(1.5.dp, SirlimTeal, RoundedCornerShape(8.dp)) else Modifier)
                                     .clip(RoundedCornerShape(8.dp))
+                                    // NOVO: Verde clarinho se tiver limpezas
                                     .background(if (hasCleanings) Color(0xFFA5D6A7).copy(alpha = 0.6f) else Color.Transparent)
                                     .clickable { onDateToggle(date) },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(text = dayNum.toString(), color = Color.White, fontWeight = if (hasCleanings || isSelected) FontWeight.Bold else FontWeight.Normal)
+                                Text(
+                                    text = dayNum.toString(), 
+                                    color = Color.White, 
+                                    fontWeight = if (hasCleanings || isSelected) FontWeight.ExtraBold else FontWeight.Normal,
+                                    fontSize = 13.sp
+                                )
                             }
                         }
                     }

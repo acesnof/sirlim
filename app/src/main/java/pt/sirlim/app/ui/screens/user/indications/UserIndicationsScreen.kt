@@ -48,6 +48,7 @@ fun UserIndicationsScreen(
     
     val indications by viewModel.indications.collectAsState()
     val compartments by groupsViewModel.compartments.collectAsState()
+    val groups by groupsViewModel.groups.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
@@ -118,6 +119,7 @@ fun UserIndicationsScreen(
                 ) {
                     items(dayIndications) { indication ->
                         val comp = compartments.find { it.id == indication.compartmentId }
+                        val group = groups.find { it.id == comp?.groupId }
                         val tasks = remember { mutableStateListOf<Task>() }
                         
                         LaunchedEffect(indication.id) {
@@ -130,6 +132,7 @@ fun UserIndicationsScreen(
                         UserIndicationItemPremium(
                             indication = indication,
                             compName = comp?.name ?: "Compartimento",
+                            groupName = group?.name ?: "Sem Grupo",
                             tasks = tasks,
                             onAction = { onStartCleaning(indication.compartmentId, indication.id!!) }
                         )
@@ -224,6 +227,7 @@ fun UserIndicationCalendarGrid(
 fun UserIndicationItemPremium(
     indication: Indication,
     compName: String,
+    groupName: String,
     tasks: List<Task>,
     onAction: () -> Unit
 ) {
@@ -244,13 +248,20 @@ fun UserIndicationItemPremium(
                 }
                 Box(modifier = Modifier.size(6.dp, 24.dp).clip(CircleShape).background(urgencyColor))
                 Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = compName, 
-                    fontWeight = FontWeight.ExtraBold, 
-                    color = if (indication.isCompleted) Color.White else SirlimDarkBlue, 
-                    fontSize = 18.sp
-                )
-                Spacer(modifier = Modifier.weight(1f))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = compName, 
+                        fontWeight = FontWeight.ExtraBold, 
+                        color = if (indication.isCompleted) Color.White else SirlimDarkBlue, 
+                        fontSize = 18.sp
+                    )
+                    Text(
+                        text = groupName, 
+                        color = if (indication.isCompleted) Color.White.copy(alpha = 0.6f) else SirlimBlue, 
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
                 if (indication.isCompleted) {
                     Text(text = "CONCLUÍDA", color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold, fontSize = 11.sp)
                 } else {

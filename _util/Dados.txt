@@ -1,0 +1,9 @@
+https://supabase.com/
+login com a minha conta github
+
+
+PROJETO:
+
+nome: sirlim_app
+
+password: s1rlim2026@

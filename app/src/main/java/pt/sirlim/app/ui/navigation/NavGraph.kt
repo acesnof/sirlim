@@ -22,6 +22,7 @@ import pt.sirlim.app.ui.screens.admin.tasks.TasksScreen
 import pt.sirlim.app.ui.screens.admin.consultations.AdminConsultationsScreen
 import pt.sirlim.app.ui.screens.admin.reports.ReportsScreen
 import pt.sirlim.app.ui.screens.admin.indications.IndicationsScreen
+import pt.sirlim.app.ui.screens.viewer.ViewerConsultationsScreen
 import pt.sirlim.app.ui.screens.admin.indications.IndicationFormScreen
 import pt.sirlim.app.ui.screens.admin.indications.IndicationsViewModel
 import pt.sirlim.app.ui.screens.user.UserHomeScreen
@@ -252,6 +253,15 @@ fun NavGraph(navController: NavHostController) {
             val userId = backStackEntry.arguments?.getString("userId") ?: ""
             UserConsultationsScreen(
                 userId = userId,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = "viewer_consultations/{userId}",
+            arguments = listOf(navArgument("userId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            ViewerConsultationsScreen(
                 onBack = { navController.popBackStack() }
             )
         }
